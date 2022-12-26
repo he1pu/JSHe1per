@@ -48,7 +48,7 @@ const JD_API_HOST = 'https://api.m.jd.com/client.action';
   for (let i = 0; i < cookiesArr.length; i++) {
     if (cookiesArr[i]) {
       cookie = cookiesArr[i];
-      $.UserName = decodeURIComponent(cookie.match(/pt_pin=(.+?);/) && cookie.match(/pt_pin=(.+?);/)[1])
+      $.UserName = decodeURIComponent(cookie.match(/pt_pin=([^; ]+)(?=;?)/) && cookie.match(/pt_pin=([^; ]+)(?=;?)/)[1]);
       $.index = i + 1;
       $.isLogin = true;
       $.beans = 0
@@ -79,7 +79,11 @@ const JD_API_HOST = 'https://api.m.jd.com/client.action';
 async function main() {
   try {
     await goldCreatorTab();//获取顶部主题
+    await $.wait(1000);
     await getDetail();
+    await $.wait(500);
+    await goldCreatorPublish();
+    await $.wait(500);
     await showMsg();
   } catch (e) {
     $.logErr(e)
@@ -99,7 +103,7 @@ async function getDetail() {
   for (let item of $.subTitleInfos) {
     console.log(`\n开始给【${item['longTitle']}】主题下的商品进行投票`);
     await goldCreatorDetail(item['matGrpId'], item['subTitleId'], item['taskId'], item['batchId']);
-    await $.wait(4000);
+    await $.wait(2000);
   }
 }
 function goldCreatorTab() {
@@ -196,7 +200,8 @@ async function doTask(subTitleId, taskId, batchId) {
     "itemId": "1",
     "rankId": $.skuList[randIndex]['rankId'],
     "type": 1,
-    batchId
+    batchId,
+	"version": "2"
   };
   await goldCreatorDoTask(body);
 }
@@ -205,12 +210,12 @@ async function doTask2(batchId) {
     task = task.filter(vo => !!vo && vo['taskStatus'] === 1);
     for (let item of task) {
       console.log(`\n做额外任务：${item['taskName']}`)
-      const body = {"taskId": item['taskId'], "itemId": item['taskItemInfo']['itemId'], "type": item['taskType'], batchId};
+      const body = {"taskId": item['taskId'], "itemId": item['taskItemInfo']['itemId'], "type": item['taskType'], batchId, "version":"2"};
       if (item['taskType'] === 1) {
         body['type'] = 2;
       }
       await goldCreatorDoTask(body);
-      await $.wait(4000);
+      await $.wait(2000);
     }
   }
   if ($.signTask['taskStatus'] === 1) {
@@ -231,7 +236,7 @@ function goldCreatorDoTask(body) {
             data = JSON.parse(data)
             if (data.code === '0') {
               if (data.result.taskCode === '0') {
-                console.log(`成功，获得 ${data.result.lotteryScore}京豆\n`);
+                console.log(`成功，获得 ${data.result.lotteryScore}京豆`);
                 if (data.result.lotteryScore) $.beans += parseInt(data.result.lotteryScore);
               } else {
                 console.log(`失败：${data.result['taskMsg']}\n`);
@@ -249,15 +254,37 @@ function goldCreatorDoTask(body) {
     })
   })
 }
+function goldCreatorPublish() {
+  return new Promise(resolve => {
+    $.get(taskUrl('goldCreatorPublish'), async (err, resp, data) => {
+      try {
+        if (err) {
+          console.log(`${JSON.stringify(err)}`)
+          console.log(`${$.name} goldCreatorPublish API请求失败，请检查网路重试`)
+        } else {
+          if (safeGet(data)) {
+            data = JSON.parse(data)
+            if (data.code === '0') {
+              if (data.result.subCode === '0') {
+                console.log(data.result.lotteryResult.lotteryCode === '0' ? `揭榜成功：获得${data.result.lotteryResult.lotteryScore}京豆` : `揭榜成功：获得空气~`)
+              }
+            } else {
+              console.log(`揭榜失败：${JSON.stringify(data)}`)
+            }
+          }
+        }
+      } catch (e) {
+        $.logErr(e, resp)
+      } finally {
+        resolve();
+      }
+    })
+  })
+}
 function taskUrl(function_id, body = {}) {
   return {
-    url: `${JD_API_HOST}?functionId=${function_id}&body=${escape(JSON.stringify(body))}&appid=content_ecology&clientVersion=10.0.0&client=wh5&eufv=false&uuid=`,
+    url: `${JD_API_HOST}?functionId=${function_id}&body=${escape(JSON.stringify(body))}&appid=content_ecology&clientVersion=11.3.0&client=wh5&jsonp=`,
     headers: {
-      "Accept": "*/*",
-      "Accept-Encoding": "gzip, deflate, br",
-      "Accept-Language": "zh-cn",
-      "Connection": "keep-alive",
-      "Content-Type": "application/x-www-form-urlencoded",
       "Host": "api.m.jd.com",
       "Referer": "https://h5.m.jd.com/",
       "Cookie": cookie,
@@ -269,9 +296,9 @@ function taskUrl(function_id, body = {}) {
 function TotalBean() {
   return new Promise(async resolve => {
     const options = {
-      url: "https://me-api.jd.com/user_new/info/GetJDUserInfoUnion",
+      url: "https://wq.jd.com/user_new/info/GetJDUserInfoUnion?sceneval=2",
       headers: {
-        Host: "me-api.jd.com",
+        Host: "wq.jd.com",
         Accept: "*/*",
         Connection: "keep-alive",
         Cookie: cookie,
@@ -288,15 +315,15 @@ function TotalBean() {
         } else {
           if (data) {
             data = JSON.parse(data);
-            if (data['retcode'] === "1001") {
+            if (data['retcode'] === 1001) {
               $.isLogin = false; //cookie过期
               return;
             }
-            if (data['retcode'] === "0" && data.data && data.data.hasOwnProperty("userInfo")) {
+            if (data['retcode'] === 0 && data.data && data.data.hasOwnProperty("userInfo")) {
               $.nickName = data.data.userInfo.baseInfo.nickname;
             }
           } else {
-            $.log('京东服务器返回空数据');
+            console.log('京东服务器返回空数据');
           }
         }
       } catch (e) {
