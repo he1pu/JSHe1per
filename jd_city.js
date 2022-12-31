@@ -5,7 +5,7 @@
 =================================Quantumultx=========================
 [task_local]
 #城城领现金
-0 11,0-23/5 9-14 12 * https://raw.githubusercontent.com/he1pu/JSHe1per/main/jd_city.js, tag=城城领现金, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/jd.png, enabled=true
+0 11,0-23/5 9-14 12 * https://raw.githubusercontent.com/he1pu/JDHelp/main/jd_city.js, tag=城城领现金, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/jd.png, enabled=true
 
  */
 
@@ -32,8 +32,9 @@ if ($.isNode()) {
   cookiesArr = [$.getdata('CookieJD'), $.getdata('CookieJD2'), ...jsonParse($.getdata('CookiesJD') || "[]").map(item => item.cookie)].filter(item => !!item);
 }
 const JD_API_HOST = 'https://api.m.jd.com/client.action';
-let inviteCodes = ['-ryUXfgLZDVDZEfATt2U8qVJGjLlOGbh', '-ryUEc9LERMjFEOcC4aUu_hRyZBItWQ']
+let inviteCodes = ['29DREpgEQQ9Qanm7Ou46NRsev54Chvwb', '29DRXq9ENCkwGn3nf7U6fItLNnqv-iQ']
 $.shareCodesArr = [];
+$.token = 'trxpmpmkwe3437l1'
 
 !(async () => {
   if (!cookiesArr[0]) {
@@ -49,9 +50,10 @@ $.shareCodesArr = [];
   if (exchangeFlag+"" == "true") {
     console.log(`脚本自动抽奖`)
   } else {
-    console.log(`脚本不会自动抽奖，建议活动快结束开启，默认关闭(在12.12日自动开启抽奖),如需自动抽奖请设置环境变量  JD_CITY_EXCHANGE 为true`);
+    console.log(`脚本不会自动抽奖，建议活动快结束开启，默认关闭(在1.2日自动开启抽奖),如需自动抽奖请设置环境变量  JD_CITY_EXCHANGE 为true`);
   }
   $.inviteIdCodesArr = {}
+  $.collectAllCount = 0
   for (let i = 0; i < cookiesArr.length && true; i++) {
     if (cookiesArr[i]) {
       cookie = cookiesArr[i];
@@ -59,6 +61,11 @@ $.shareCodesArr = [];
       $.index = i + 1;
       await getUA()
       await getInviteId();
+      await $.wait(3000)
+      if($.index >= (5 + $.collectAllCount)) {
+        console.log(`已获取超过5个`)
+        break
+      }
     }
   }
   if(Object.getOwnPropertyNames($.inviteIdCodesArr).length > 0){
@@ -87,6 +94,10 @@ $.shareCodesArr = [];
       console.log(`\n******开始【京东账号${$.index}】${$.nickName || $.UserName}*********\n`);
       await getUA()
       await shareCodesFormat()
+      $.joyytoken = ''
+      $.uid = ''
+      let isLogin = true
+      $.joyytokenb = ($.getdata("jd_blog_joyytoken") && $.getdata("jd_blog_joyytoken")[$.UserName]) || ''
       for (let i = 0; i < $.newShareCodes.length && true; ++i) {
         console.log(`\n开始助力 【${$.newShareCodes[i]}】`)
         let res = await getInfo($.newShareCodes[i])
@@ -103,7 +114,25 @@ $.shareCodesArr = [];
           // 助力次数耗尽 || 黑号
           break
         }
+        if(/火爆|已有账号参与活动/.test($.toStr(res, res))){
+            break
+        }else if(/登陆失败/.test($.toStr(res, res))){
+            isLogin = false
+            break
+        }
+        await $.wait(3000)
       }
+      if(!isLogin){
+        continue
+      }
+      let jd_blog_joyytoken = $.getdata("jd_blog_joyytoken") || {}
+        if($.joyytokenb){
+            jd_blog_joyytoken[$.UserName] = $.joyytokenb
+            $.setdata(jd_blog_joyytoken, 'jd_blog_joyytoken')
+        }else if (jd_blog_joyytoken[$.UserName]){
+            delete jd_blog_joyytoken[$.UserName]
+            $.setdata(jd_blog_joyytoken, 'jd_blog_joyytoken')
+        }
       // await getInfo($.newShareCodes[i], true)
       await getInviteInfo();//雇佣
       if (exchangeFlag+"" == "true") {
@@ -116,7 +145,7 @@ $.shareCodesArr = [];
         }
       } else {
         //默认12.12开启抽奖
-        if ((new Date().getMonth()  + 1) === 12 && new Date().getDate() >= 12) {
+        if ((new Date().getMonth()  + 1) === 1 && new Date().getDate() >= 2) {
           const res = await city_lotteryAward();//抽奖
           if (res && res > 0) {
             for (let i = 0; i < new Array(res).fill('').length; i++) {
@@ -142,7 +171,7 @@ function taskPostUrl(functionId,body) {
         url: `${JD_API_HOST}`,
         body: `functionId=${functionId}&appid=signed_wh5&body=${(JSON.stringify(body))}&client=wh5&clientVersion=1.0.0`,
         headers: {
-            'Cookie': cookie,
+            'Cookie': ($.abcv ? $.abcv : "")+cookie,
             'Connection': 'keep-alive',
             'Content-Type': 'application/x-www-form-urlencoded',
             "User-Agent": $.UA,
@@ -150,13 +179,13 @@ function taskPostUrl(functionId,body) {
             'Accept': 'application/json, text/plain, */*',
             'Accept-Language': 'zh-cn',
             'Accept-Encoding': 'gzip, deflate, br',
-        }
+        },
+        timeout: 20000
     }
 }
 
 function getInviteId() {
-   let body = { "lbsCity": "16", "realLbsCity": "1315", "inviteId": '', "headImg": "", "userName": "", "taskChannel": "1","location":"","safeStr":"" }
-//   let body = {"lbsCity":"15","realLbsCity":"1233","inviteId":'',"headImg":"","userName":"","taskChannel":"1","location":"120.609447,28.008608","safeStr":""}
+  let body = { "lbsCity": "16", "realLbsCity": "1315", "inviteId": '', "headImg": "", "userName": "", "taskChannel": "1","location":"","safeStr":"" }
 
   return new Promise((resolve) => {
     $.post(taskPostUrl("city_getHomeDatav1",body), async (err, resp, data) => {
@@ -171,9 +200,14 @@ function getInviteId() {
             if (data.code === 0) {
               if (data.data && data['data']['bizCode'] === 0) {
                 if (data.data && data.data.result.userActBaseInfo.inviteId) {
-                  console.log(`\n【京东账号${$.index}（${$.UserName}）的${$.name}好友互助码】${data.data && data.data.result.userActBaseInfo.inviteId}\n`);
-                  $.inviteIdCodesArr[$.index - 1] = data.data.result.userActBaseInfo.inviteId
-                  await submitCode(data.data.result.userActBaseInfo.inviteId)
+                    if (data.data.result.userActBaseInfo.actStatus != 4) {
+                        console.log(`\n【京东账号${$.index}（${$.UserName}）的${$.name}好友互助码】${data.data && data.data.result.userActBaseInfo.inviteId}\n`);
+                        $.inviteIdCodesArr[$.index - 1] = data.data.result.userActBaseInfo.inviteId
+                        await submitCode(data.data.result.userActBaseInfo.inviteId)
+                    }else {
+                        $.collectAllCount += 1
+                        console.log(`\n【账号${$.index}（${$.UserName}）】已领完所有现金\n【好友互助码】${data.data && data.data.result.userActBaseInfo.inviteId}`)
+                    }
                 }
               } else {
                 console.log(`\n\n获取邀请码失败:${data.data.bizMsg}`)
@@ -196,6 +230,11 @@ function getInviteId() {
 }
 async function getInfo(inviteId, flag = false) {
     let log = JSON.stringify(await getLogs("inviteId", { }))
+    // let log = JSON.stringify({
+    //     "sceneid":"CHFhPageh5",
+    //     "random": "31058056",
+    //     "log": "1650387163992~1IJwtF6ky3kMDFCR2RCbjAxMQ==.c3FRcl16cFVwXXt3VzxfDigJeiRwJA1xEHNrUm5ZbnYacBBzORJwNAY1BzcFBipRels0IAskBgMGAiYvf3oa.6c91cd74~7,1~D3D8CEDBAA5F52C4A8D7F4913D074641CD4602FE~1kkiacc~C~SRNHXxELaW0fEERdWRELaWwfE1RLXRIIAB8QQEIQChEDBgYEAAkFAAEFAQsFBwsFBhAfE0VVVxAKEUBHRVRXVURVGx8SRVRSEAkTVFZHU0VHQVITHhNDVV0bCWsKHQceBR0KHAIeAG4YEVtYEwkAHxtQQxALEVEBAwFRAVYGUlBSU1cABlQAAAMCUAUGUQUICgICBQFQFh8TXEERCxFuWl4BAxEeEUUQCgIEBQMHCwYDBwAICgsfElhaEQgRUBAcEVRAURYJE0QDaXVBWkZbdlwGCgZHVV9VWnFyUldwDwwRHRFXRRIIE3RdXFZeVRN7XlAaER0QX1JHEQMRUxAdEUFQQxAKaAUGCxgCAgQHbh0RS1wSCGoRUxEdEFERHhJSFh8TUxMfE1IbHxJTEx8QUhNvHBFbX1IWCRNUV1VXVV9HRBAdEVNZEwgSRhAcEVdaEwgTRAIdDR0CEB0RUVVuRBIJEAACFh8TUFURCxFLUl5WXl4PAAACBQsCBQUWHxNfWxELaAkfAB4Bbh4RU15fVBAKEVURHRBcQFYRAxFREEw=~0f26knp"
+    // })
   let body = { "lbsCity": "16", "realLbsCity": "1315", "inviteId": inviteId, "headImg": "", "userName": "", "taskChannel": "1" ,"location":"","safeStr":`${log}`}
 //   let body = {"lbsCity":"15","realLbsCity":"1233","inviteId":inviteId,"headImg":"","userName":"","taskChannel":"1","location":"120.609447,28.008608","safeStr":""}
 
@@ -465,7 +504,7 @@ async function getLogs(functionId, body = {}) {
         $.joyytokenb = await gettoken("50999")
     }
     joyytokenb = $.joyytokenb
-    let resBody = { "fn": "city", "id": functionId, "riskData": '', "pin": $.UserName, "joyytoken": joyytoken, "uid": $.uid || "", "joyytokenb": joyytokenb }
+    let resBody = { "fn": "city1", "id": functionId, "riskData": '', "pin": $.UserName, "joyytoken": joyytoken, "uid": $.uid || "", "joyytokenb": joyytokenb }
     let log_res = await getLog(resBody)
     res = log_res.data
     let resCount = 0
@@ -502,6 +541,84 @@ async function getLogs(functionId, body = {}) {
         "random":num
     }
 }
+function gettoken(appname) {
+    return new Promise(resolve => {
+        let body = `content={"appname":"50074","whwswswws":"","jdkey":"a","body":{"platform":"1"}}`
+        if (appname != "50074") {
+            body = `content={"appname":"50999","whwswswws":"","jdkey":"a","body":{"platform":"2"}}`
+        }
+        opts = {
+            url: `https://rjsb-token-m.jd.com/gettoken`,
+            headers: {
+                "accept": "*/*",
+                "Origin": "https://bunearth.m.jd.com",
+                "Referer": "https://bunearth.m.jd.com/",
+                "User-Agent": $.UA,
+            },
+            body: body
+        }
+        let msg = ''
+        $.post(opts, async (err, resp, data) => {
+            try {
+                if (err) {
+                    console.log(`${$.toStr(err, err)}`)
+                    console.log(`gettoken API请求失败，请检查网路重试`)
+                } else {
+                    let res = $.toObj(data, data);
+                    if (typeof res == 'object') {
+                        if (res.joyytoken) {
+                            msg = res.joyytoken
+                        } else {
+                            console.log(data)
+                        }
+                    } else {
+                        console.log(data)
+                    }
+                }
+            } catch (e) {
+                console.log(e, resp)
+            } finally {
+                resolve(msg);
+            }
+        })
+    })
+}
+//log算法
+async function getLog(body) {
+    return new Promise(resolve => {
+        let options = {
+            url: `${$.getSignUrl}/jdlog`,
+            body: JSON.stringify({ "token": $.token, "body": body }),
+            headers: {
+                "Content-Type": "application/json",
+            },
+            timeout: 30000
+        }
+        let msg = ''
+        $.post(options, async (err, resp, data) => {
+            try {
+                if (err) {
+                    console.log(`${JSON.stringify(err)}`)
+                    console.log(`${$.name} 算法 API请求失败，请检查网路重试`)
+                } else {
+                    data = $.toObj(data, data);
+                    if (data && data.code && data.code == 200) {
+                        msg = data
+                        if (data.msg && data.msg != "success") {
+                            console.log(data.msg)
+                            if (/次数不够/.test(data.msg)) process.exit(1)
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log(e)
+            } finally {
+                resolve(msg);
+            }
+        })
+    })
+}
+
 function getUA(){
 	$.UA = `jdapp;iPhone;10.2.0;13.1.2;${randomString(40)};M/5.0;network/wifi;ADID/;model/iPhone8,1;addressid/2308460611;appBuild/167853;jdSupportDarkMode/0;Mozilla/5.0 (iPhone; CPU iPhone OS 13_1_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1;`
   $.uuid = $.UA.split(';')[4]
@@ -537,5 +654,4 @@ function jsonParse(str) {
 }
 // prettier-ignore
 function Env(t,e){"undefined"!=typeof process&&JSON.stringify(process.env).indexOf("GITHUB")>-1&&process.exit(0);class s{constructor(t){this.env=t}send(t,e="GET"){t="string"==typeof t?{url:t}:t;let s=this.get;return"POST"===e&&(s=this.post),new Promise((e,i)=>{s.call(this,t,(t,s,r)=>{t?i(t):e(s)})})}get(t){return this.send.call(this.env,t)}post(t){return this.send.call(this.env,t,"POST")}}return new class{constructor(t,e){this.name=t,this.http=new s(this),this.data=null,this.dataFile="box.dat",this.logs=[],this.isMute=!1,this.isNeedRewrite=!1,this.logSeparator="\n",this.startTime=(new Date).getTime(),Object.assign(this,e),this.log("",`🔔${this.name}, 开始!`)}isNode(){return"undefined"!=typeof module&&!!module.exports}isQuanX(){return"undefined"!=typeof $task}isSurge(){return"undefined"!=typeof $httpClient&&"undefined"==typeof $loon}isLoon(){return"undefined"!=typeof $loon}toObj(t,e=null){try{return JSON.parse(t)}catch{return e}}toStr(t,e=null){try{return JSON.stringify(t)}catch{return e}}getjson(t,e){let s=e;const i=this.getdata(t);if(i)try{s=JSON.parse(this.getdata(t))}catch{}return s}setjson(t,e){try{return this.setdata(JSON.stringify(t),e)}catch{return!1}}getScript(t){return new Promise(e=>{this.get({url:t},(t,s,i)=>e(i))})}runScript(t,e){return new Promise(s=>{let i=this.getdata("@chavy_boxjs_userCfgs.httpapi");i=i?i.replace(/\n/g,"").trim():i;let r=this.getdata("@chavy_boxjs_userCfgs.httpapi_timeout");r=r?1*r:20,r=e&&e.timeout?e.timeout:r;const[o,h]=i.split("@"),n={url:`http://${h}/v1/scripting/evaluate`,body:{script_text:t,mock_type:"cron",timeout:r},headers:{"X-Key":o,Accept:"*/*"}};this.post(n,(t,e,i)=>s(i))}).catch(t=>this.logErr(t))}loaddata(){if(!this.isNode())return{};{this.fs=this.fs?this.fs:require("fs"),this.path=this.path?this.path:require("path");const t=this.path.resolve(this.dataFile),e=this.path.resolve(process.cwd(),this.dataFile),s=this.fs.existsSync(t),i=!s&&this.fs.existsSync(e);if(!s&&!i)return{};{const i=s?t:e;try{return JSON.parse(this.fs.readFileSync(i))}catch(t){return{}}}}}writedata(){if(this.isNode()){this.fs=this.fs?this.fs:require("fs"),this.path=this.path?this.path:require("path");const t=this.path.resolve(this.dataFile),e=this.path.resolve(process.cwd(),this.dataFile),s=this.fs.existsSync(t),i=!s&&this.fs.existsSync(e),r=JSON.stringify(this.data);s?this.fs.writeFileSync(t,r):i?this.fs.writeFileSync(e,r):this.fs.writeFileSync(t,r)}}lodash_get(t,e,s){const i=e.replace(/\[(\d+)\]/g,".$1").split(".");let r=t;for(const t of i)if(r=Object(r)[t],void 0===r)return s;return r}lodash_set(t,e,s){return Object(t)!==t?t:(Array.isArray(e)||(e=e.toString().match(/[^.[\]]+/g)||[]),e.slice(0,-1).reduce((t,s,i)=>Object(t[s])===t[s]?t[s]:t[s]=Math.abs(e[i+1])>>0==+e[i+1]?[]:{},t)[e[e.length-1]]=s,t)}getdata(t){let e=this.getval(t);if(/^@/.test(t)){const[,s,i]=/^@(.*?)\.(.*?)$/.exec(t),r=s?this.getval(s):"";if(r)try{const t=JSON.parse(r);e=t?this.lodash_get(t,i,""):e}catch(t){e=""}}return e}setdata(t,e){let s=!1;if(/^@/.test(e)){const[,i,r]=/^@(.*?)\.(.*?)$/.exec(e),o=this.getval(i),h=i?"null"===o?null:o||"{}":"{}";try{const e=JSON.parse(h);this.lodash_set(e,r,t),s=this.setval(JSON.stringify(e),i)}catch(e){const o={};this.lodash_set(o,r,t),s=this.setval(JSON.stringify(o),i)}}else s=this.setval(t,e);return s}getval(t){return this.isSurge()||this.isLoon()?$persistentStore.read(t):this.isQuanX()?$prefs.valueForKey(t):this.isNode()?(this.data=this.loaddata(),this.data[t]):this.data&&this.data[t]||null}setval(t,e){return this.isSurge()||this.isLoon()?$persistentStore.write(t,e):this.isQuanX()?$prefs.setValueForKey(t,e):this.isNode()?(this.data=this.loaddata(),this.data[e]=t,this.writedata(),!0):this.data&&this.data[e]||null}initGotEnv(t){this.got=this.got?this.got:require("got"),this.cktough=this.cktough?this.cktough:require("tough-cookie"),this.ckjar=this.ckjar?this.ckjar:new this.cktough.CookieJar,t&&(t.headers=t.headers?t.headers:{},void 0===t.headers.Cookie&&void 0===t.cookieJar&&(t.cookieJar=this.ckjar))}get(t,e=(()=>{})){t.headers&&(delete t.headers["Content-Type"],delete t.headers["Content-Length"]),this.isSurge()||this.isLoon()?(this.isSurge()&&this.isNeedRewrite&&(t.headers=t.headers||{},Object.assign(t.headers,{"X-Surge-Skip-Scripting":!1})),$httpClient.get(t,(t,s,i)=>{!t&&s&&(s.body=i,s.statusCode=s.status),e(t,s,i)})):this.isQuanX()?(this.isNeedRewrite&&(t.opts=t.opts||{},Object.assign(t.opts,{hints:!1})),$task.fetch(t).then(t=>{const{statusCode:s,statusCode:i,headers:r,body:o}=t;e(null,{status:s,statusCode:i,headers:r,body:o},o)},t=>e(t))):this.isNode()&&(this.initGotEnv(t),this.got(t).on("redirect",(t,e)=>{try{if(t.headers["set-cookie"]){const s=t.headers["set-cookie"].map(this.cktough.Cookie.parse).toString();s&&this.ckjar.setCookieSync(s,null),e.cookieJar=this.ckjar}}catch(t){this.logErr(t)}}).then(t=>{const{statusCode:s,statusCode:i,headers:r,body:o}=t;e(null,{status:s,statusCode:i,headers:r,body:o},o)},t=>{const{message:s,response:i}=t;e(s,i,i&&i.body)}))}post(t,e=(()=>{})){if(t.body&&t.headers&&!t.headers["Content-Type"]&&(t.headers["Content-Type"]="application/x-www-form-urlencoded"),t.headers&&delete t.headers["Content-Length"],this.isSurge()||this.isLoon())this.isSurge()&&this.isNeedRewrite&&(t.headers=t.headers||{},Object.assign(t.headers,{"X-Surge-Skip-Scripting":!1})),$httpClient.post(t,(t,s,i)=>{!t&&s&&(s.body=i,s.statusCode=s.status),e(t,s,i)});else if(this.isQuanX())t.method="POST",this.isNeedRewrite&&(t.opts=t.opts||{},Object.assign(t.opts,{hints:!1})),$task.fetch(t).then(t=>{const{statusCode:s,statusCode:i,headers:r,body:o}=t;e(null,{status:s,statusCode:i,headers:r,body:o},o)},t=>e(t));else if(this.isNode()){this.initGotEnv(t);const{url:s,...i}=t;this.got.post(s,i).then(t=>{const{statusCode:s,statusCode:i,headers:r,body:o}=t;e(null,{status:s,statusCode:i,headers:r,body:o},o)},t=>{const{message:s,response:i}=t;e(s,i,i&&i.body)})}}time(t,e=null){const s=e?new Date(e):new Date;let i={"M+":s.getMonth()+1,"d+":s.getDate(),"H+":s.getHours(),"m+":s.getMinutes(),"s+":s.getSeconds(),"q+":Math.floor((s.getMonth()+3)/3),S:s.getMilliseconds()};/(y+)/.test(t)&&(t=t.replace(RegExp.$1,(s.getFullYear()+"").substr(4-RegExp.$1.length)));for(let e in i)new RegExp("("+e+")").test(t)&&(t=t.replace(RegExp.$1,1==RegExp.$1.length?i[e]:("00"+i[e]).substr((""+i[e]).length)));return t}msg(e=t,s="",i="",r){const o=t=>{if(!t)return t;if("string"==typeof t)return this.isLoon()?t:this.isQuanX()?{"open-url":t}:this.isSurge()?{url:t}:void 0;if("object"==typeof t){if(this.isLoon()){let e=t.openUrl||t.url||t["open-url"],s=t.mediaUrl||t["media-url"];return{openUrl:e,mediaUrl:s}}if(this.isQuanX()){let e=t["open-url"]||t.url||t.openUrl,s=t["media-url"]||t.mediaUrl;return{"open-url":e,"media-url":s}}if(this.isSurge()){let e=t.url||t.openUrl||t["open-url"];return{url:e}}}};if(this.isMute||(this.isSurge()||this.isLoon()?$notification.post(e,s,i,o(r)):this.isQuanX()&&$notify(e,s,i,o(r))),!this.isMuteLog){let t=["","==============📣系统通知📣=============="];t.push(e),s&&t.push(s),i&&t.push(i),console.log(t.join("\n")),this.logs=this.logs.concat(t)}}log(...t){t.length>0&&(this.logs=[...this.logs,...t]),console.log(t.join(this.logSeparator))}logErr(t,e){const s=!this.isSurge()&&!this.isQuanX()&&!this.isLoon();s?this.log("",`❗️${this.name}, 错误!`,t.stack):this.log("",`❗️${this.name}, 错误!`,t)}wait(t){return new Promise(e=>setTimeout(e,t))}done(t={}){const e=(new Date).getTime(),s=(e-this.startTime)/1e3;this.log("",`🔔${this.name}, 结束! 🕛 ${s} 秒`),this.log(),(this.isSurge()||this.isQuanX()||this.isLoon())&&$done(t)}}(t,e)}
-
 
