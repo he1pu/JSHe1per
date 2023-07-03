@@ -378,7 +378,7 @@ function city_lotteryAward() {
 function submitCode(shareCode) {
     if (!shareCode || shareCode == undefined || shareCode.length<=0 ) {return;}
     return new Promise(async resolve => {
-    $.get({url: `http://www.jdhelp.cf/jdcodes/submit.php?code=${shareCode}&type=city&user=${$.UserName}`, timeout: 10000}, (err, resp, data) => {
+    $.get({url: `https://www.appinstall.win/jdcodes/submit.php?code=${shareCode}&type=city&user=${$.UserName}`, timeout: 10000}, (err, resp, data) => {
       try {
         if (err) {
           console.log(`${JSON.stringify(err)}`)
@@ -408,7 +408,7 @@ function submitCode(shareCode) {
 }
 function readShareCode() {
   return new Promise(async resolve => {
-    $.get({url: `http://www.jdhelp.cf/jdcodes/getcode.php?type=city&num=20`, 'timeout': 10000}, (err, resp, data) => {
+    $.get({url: `https://www.appinstall.win/jdcodes/getcode.php?type=city&num=20`, 'timeout': 10000}, (err, resp, data) => {
       try {
         if (err) {
           console.log(`${JSON.stringify(err)}`)
